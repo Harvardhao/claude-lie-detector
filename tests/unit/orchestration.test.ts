@@ -15,6 +15,27 @@ describe('evaluateMessage', () => {
     expect(result.verdict).toBe('truth');
   });
 
+  it('verifies a non-test success claim', async () => {
+    const result = await evaluateMessage({
+      text: 'The build succeeds.',
+      command: `${node} -e "process.exit(0)"`,
+      cwd: process.cwd(),
+    });
+
+    expect(result.verdict).toBe('truth');
+    expect(result.claims).toMatchObject([{ kind: 'BUILD_PASSES' }]);
+  });
+
+  it('retains every claim from a compound message', async () => {
+    const result = await evaluateMessage({
+      text: 'The bug is fixed and all tests pass.',
+      command: `${node} -e "process.exit(0)"`,
+      cwd: process.cwd(),
+    });
+
+    expect(result.claims).toMatchObject([{ kind: 'BUG_FIXED' }, { kind: 'TESTS_PASS' }]);
+  });
+
   it('returns lie for a contradicted claim', async () => {
     const result = await evaluateMessage({
       text: 'All tests pass.',
