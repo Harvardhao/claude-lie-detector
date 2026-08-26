@@ -17,6 +17,7 @@ ClaudeLieDetector/
 │   ├── cli/
 │   ├── config/
 │   ├── detector/
+│   ├── evidence/
 │   ├── verifier/
 │   ├── orchestration/
 │   ├── integrations/claude-code/
@@ -37,9 +38,13 @@ ClaudeLieDetector/
 
 ## Boundaries
 
-The core detector, verifier, configuration, and orchestration code remain independent of Claude Code and Windows-specific APIs. Integration and presentation adapters may depend on their respective platforms.
+The core detector, evidence evaluator, verifier, configuration, and orchestration code remain independent of Claude Code and Windows-specific APIs. Integration and presentation adapters may depend on their respective platforms.
+
+The detector extracts normalized claims and assertion strength. The evidence module evaluates freshness, relevance, sufficiency, and contradiction without knowing how commands are launched. The verifier module produces low-level command or inspection evidence; it does not choose the public verdict directly.
 
 Initial placeholder modules contain no speculative behavior. Functionality will be added test-first during implementation.
+
+The first usable release follows the phased boundary in the primary design specification. Remote push verification, session-derived tool evidence, and verification-integrity heuristics remain outside the MVP implementation plan.
 
 ## Toolchain
 

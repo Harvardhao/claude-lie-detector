@@ -6,12 +6,13 @@
 
 ## 1. Summary
 
-Claude Lie Detector is a small local developer tool that reacts when a coding agent confidently claims that work is correct or complete, verifies that claim with a configured command, and displays a comic verdict:
+Claude Lie Detector is a small local developer tool that reacts when a coding agent confidently claims that work is correct or complete, gathers claim-relevant evidence, and displays a comic verdict:
 
-- **TRUTH** when verification passes.
-- **LIE** when verification fails.
+- **TRUTH** when fresh, relevant, sufficient evidence supports the claim.
+- **LIE** when fresh, relevant evidence directly contradicts the claim.
+- No public verdict when evidence is missing, stale, insufficient, or unavailable.
 
-The product is intentionally comedic, but its core mechanic is deterministic: it does not attempt to infer deception or intent. It detects confidence-style success claims and checks those claims against an executable verification command such as a test suite, build, or lint command.
+The product is intentionally comedic, but its core mechanic is deterministic: it does not attempt to infer deception or intent. It detects confidence-style success claims and checks them against user-configured commands or fixed local inspections appropriate to each claim.
 
 The MVP targets Claude Code first, is designed for public release on GitHub, and should be packageable as a Claude Code plugin or plugin-adjacent extension using the currently supported hook/plugin mechanism.
 
@@ -21,8 +22,8 @@ Create a funny, instantly understandable developer tool that turns the phrase �
 
 1. Claude makes a confident success claim.
 2. Claude Lie Detector triggers verification.
-3. Verification passes or fails.
-4. A centered image popup appears with a sound effect unless muted.
+3. Fresh evidence supports, contradicts, or cannot verify the claim.
+4. A centered image popup appears for supported or contradicted claims, with a sound effect unless muted.
 
 The project should be small enough to build and polish within one week.
 
@@ -59,11 +60,11 @@ Lie Detector recognizes a verification-worthy claim
 
         ↓
 
-Configured verifier runs
+Claim-relevant verifier runs
 
         ↓
 
-exit code 0
+fresh, relevant, sufficient evidence supports the claim
 
         ↓
 
@@ -83,11 +84,11 @@ Lie Detector recognizes a verification-worthy claim
 
         ↓
 
-Configured verifier runs
+Claim-relevant verifier runs
 
         ↓
 
-non-zero exit code
+fresh, relevant evidence directly contradicts the claim
 
         ↓
 
@@ -97,19 +98,34 @@ Centered LIE image
 
 ## 6. Verdict Semantics
 
-The UI uses only two verdicts in V1:
+The public UI uses two theatrical verdicts in V1:
 
 ### TRUTH
 
-Displayed when the configured verification command exits successfully.
+Displayed when Claude made a verification-worthy claim and the detector obtained **fresh, claim-relevant evidence that supports it**.
 
-This means **the configured check passed**, not that every statement Claude made was objectively true.
+This means **the checked claim is supported by the configured evidence**, not that every statement Claude made was objectively true.
 
 ### LIE
 
-Displayed when the configured verification command exits unsuccessfully.
+Displayed when Claude made a verification-worthy claim and the detector obtained **fresh, claim-relevant evidence that directly contradicts it**.
 
-This means **Claude made a success-style claim and the configured check contradicted it**, not that Claude intentionally deceived the user.
+This means **the evidence contradicted the success-style claim**, not that Claude intentionally deceived the user.
+
+### Internal evidence states
+
+The engine should use four internal states even though the comic UI remains binary:
+
+```text
+SUPPORTED      → eligible for TRUTH
+CONTRADICTED   → eligible for LIE
+UNVERIFIED     → no TRUTH/LIE verdict by default
+ERROR          → no TRUTH/LIE verdict; show/log verifier error
+```
+
+`UNVERIFIED` is important. Missing evidence is not evidence of failure. For example, a passing test suite does not prove that a claimed Git push occurred, and a partial test run does not prove that **all** tests pass.
+
+A future theme may expose `UNVERIFIED` with a comic label such as `NO RECEIPTS`, but V1 should default to no verdict so the meaning of TRUTH and LIE stays defensible.
 
 The README should make this distinction explicit while preserving the joke.
 
@@ -117,78 +133,238 @@ Recommended tagline:
 
 > **Claude Lie Detector — because “this should work now” is not a test suite.**
 
+Secondary positioning:
+
+> **Claude takes a victory lap. Lie Detector demands receipts.**
+
 ## 7. Claim Detection
 
-The MVP should use local deterministic matching rather than another model.
+The MVP should use local deterministic classification rather than another model.
 
-### Initial trigger phrases
+The detector should not depend on a flat list of complete trigger sentences. Instead it should recognize a small number of **claim families**, estimate how strongly the assistant is asserting them, and decide whether the message is taking a verification-worthy “victory lap.”
 
-Examples include:
+### Claim families
 
-- `this should work`
-- `this should now work`
-- `the issue is fixed`
-- `the bug is fixed`
-- `all tests should pass`
-- `the tests should now pass`
-- `this is resolved`
-- `this has been fixed`
-- `the implementation is complete`
-- `everything should work`
+Initial claim types should include:
 
-Matching should be:
+```text
+TESTS_PASS
+BUILD_PASSES
+LINT_CLEAN
+BUG_FIXED
+FILE_CHANGED
+FILE_CREATED
+COMMITTED
+PUSHED
+IMPLEMENTATION_COMPLETE
+SERVICE_RUNNING
+GENERIC_SUCCESS
+```
+
+Examples:
+
+| Assistant statement | Normalized claim |
+| --- | --- |
+| “All 47 tests are green.” | `TESTS_PASS(scope=all)` |
+| “pytest passes now.” | `TESTS_PASS(scope=unknown)` |
+| “The project builds successfully.” | `BUILD_PASSES` |
+| “Lint is clean.” | `LINT_CLEAN` |
+| “The login bug is fixed.” | `BUG_FIXED` |
+| “I added `foo.test.ts`.” | `FILE_CREATED(path=foo.test.ts)` |
+| “I committed the changes.” | `COMMITTED` |
+| “The changes are pushed.” | `PUSHED` |
+| “That is fully implemented.” | `IMPLEMENTATION_COMPLETE` |
+| “The server is running.” | `SERVICE_RUNNING` |
+| “This should work now.” | `GENERIC_SUCCESS` |
+
+Detection may use configurable word groups, regular expressions, and narrow parsing rules. It should be:
 
 - case-insensitive;
-- tolerant of punctuation;
+- tolerant of punctuation and minor wording variation;
 - configurable by the user;
-- conservative enough not to trigger on every response.
+- conservative enough not to trigger on ordinary planning or analysis;
+- able to extract more than one claim from one assistant message.
+
+### Confidence level
+
+A claim and its confidence should be represented separately.
+
+Suggested confidence levels:
+
+```text
+SPECULATION       “this might fix it”
+PREDICTION        “this should fix it”
+ASSERTION         “this fixes the issue”
+STRONG_ASSERTION  “fixed”, “done”, “all tests pass”
+```
+
+By default:
+
+- `SPECULATION` does not trigger;
+- `PREDICTION` is configurable;
+- `ASSERTION` and `STRONG_ASSERTION` trigger when the claim is verifiable.
+
+Hedging terms such as `maybe`, `might`, `I think`, and `likely` should reduce confidence. Completion language such as `fixed`, `resolved`, `done`, `passes`, `working`, and `complete` should increase it.
+
+### Victory-lap score
+
+The detector may implement the trigger decision as a small deterministic score. The exact weights may change during implementation, but the model should resemble:
+
+```text
+completion verb                         +2
+fixed/resolved/passing/working          +2
+unqualified factual assertion           +2
+“now” / “done” / “complete”             +1
+hedge (“maybe”, “might”, “I think”)     -3
+future/planning language                 -2
+question                                 -3
+```
+
+A configurable threshold determines whether the assistant is confidently declaring success rather than merely discussing a possible outcome.
+
+The internal name `victory_lap_score` is acceptable and matches the product personality.
+
+### Compound claims
+
+One assistant response may contain multiple independent claims:
+
+```text
+“The bug is fixed, all tests pass, and I pushed the changes.”
+```
+
+should become approximately:
+
+```text
+BUG_FIXED
+TESTS_PASS(scope=all)
+PUSHED
+```
+
+Each claim is evaluated independently. One contradicted claim is enough for the response to be eligible for a LIE verdict. The popup/log should identify the contradicted claim when possible.
 
 ### Trigger rule
 
-A verdict is produced only when:
+A verdict is considered only when:
 
-1. a configured confidence/success pattern matches the relevant Claude output; and
-2. a verification command is configured and can be executed.
+1. one or more supported claim patterns are recognized;
+2. the confidence/victory-lap threshold is met; and
+3. appropriate evidence can be obtained for at least one claim.
 
-The detector should debounce repeated matching phrases from the same response so one Claude message produces at most one verification event.
+Repeated wording in the same assistant response must be debounced so one response produces at most one presentation event, even if it contains several claims.
 
 ## 8. Verification
 
-### Verification command
+Verification should answer a narrower question than “is the whole project healthy?” It should ask: **does available evidence support the claim Claude actually made?**
 
-Users configure one shell command, for example:
+### Evidence sources
+
+The detector may obtain evidence from two places:
+
+1. **existing fresh evidence** already produced during the current agent session, when the integration surface exposes enough structured information; and
+2. **active verification** performed by Claude Lie Detector.
+
+V1 may ship active verification first if transcript/tool-event evidence is not reliably available through the Claude Code integration, but the core data model should allow both.
+
+### Evidence freshness
+
+Passing evidence becomes stale when relevant project state changes after the check.
+
+Conceptually:
 
 ```text
-npm test
+source edit
+    ↓
+test run passes
+    ↓
+source edit
+    ↓
+claim: “all tests pass”
 ```
 
-or:
+The old result must not support the new claim.
+
+For claims tied to mutable project state, evidence should normally satisfy:
 
 ```text
-pytest
+verification time > latest relevant mutation time
 ```
 
-or:
+When freshness cannot be established reliably, the result should be `UNVERIFIED` rather than incorrectly producing TRUTH.
+
+### Evidence scope
+
+Evidence must be broad enough to support the claim.
+
+For example:
 
 ```text
-npm run build
+pytest tests/test_auth.py   → 6 passed
+Claude: “All tests pass.”
 ```
 
-V1 uses a single command to keep verdict semantics obvious.
+The evidence supports that selected test target, but not necessarily `TESTS_PASS(scope=all)`. This should become `UNVERIFIED` or a narrower supported claim, not TRUTH for the universal claim.
+
+### Claim-specific verifiers
+
+The tool should support one default project verifier plus narrow built-in or configured verifiers for common claim types.
+
+Conceptual configuration:
+
+```toml
+verify = "npm test"
+verify_tests = "npm test"
+verify_build = "npm run build"
+verify_lint = "npm run lint"
+```
+
+The exact schema may differ.
+
+Some claim types should use direct local inspection rather than shell commands where practical:
+
+```text
+FILE_CREATED / FILE_CHANGED  → filesystem + git diff
+COMMITTED                    → local git state/log
+PUSHED                       → compare local and upstream refs
+SERVICE_RUNNING              → configured process/port/health check
+```
+
+`BUG_FIXED`, `IMPLEMENTATION_COMPLETE`, and `GENERIC_SUCCESS` may fall back to the default configured verifier because their semantics are project-specific.
 
 ### Result mapping
 
+Active command execution still produces a low-level result:
+
 ```text
-exit code 0     → TRUTH
-exit code != 0  → LIE
-command error   → no verdict; show/log verifier error
+exit code 0     → passing command evidence
+exit code != 0  → failing command evidence
+command error   → ERROR
 ```
 
-A command that cannot start should not be treated as a lie, because the tool did not obtain valid verification evidence.
+The verdict engine then asks whether that result is relevant and sufficient for the normalized claim:
+
+```text
+fresh + relevant + sufficient + passing      → SUPPORTED
+fresh + relevant + directly failing          → CONTRADICTED
+missing / stale / partial / wrong evidence   → UNVERIFIED
+command or inspection failure                → ERROR
+```
+
+A command that cannot start must never be treated as a lie because no valid verification evidence was obtained.
+
+### Post-MVP verification integrity
+
+A passing verifier can still be suspicious if the agent made the check easier rather than fixing the implementation.
+
+A later release may inspect relevant diffs for obvious verification-degrading changes such as:
+
+- newly skipped or disabled tests;
+- deleted tests;
+- removed or clearly weakened assertions;
+- failure-swallowing patterns such as `|| true` in verification scripts.
 
 ### Process behavior
 
-The verifier should:
+When active commands are required, the verifier should:
 
 - run in the active project directory;
 - inherit a safe, minimal environment needed for normal project commands;
@@ -197,7 +373,7 @@ The verifier should:
 - avoid shell interpolation when an argv-style execution API can be used;
 - never execute commands derived from Claude output.
 
-Only user-configured commands may be executed.
+Only user-configured commands or built-in fixed inspection operations may be executed.
 
 ## 9. Popup Experience
 
@@ -306,32 +482,58 @@ AssistantMessage {
 
 ### B. Claim detector
 
-Responsibility: determine whether an assistant message contains a configured success/confidence claim.
+Responsibility: extract one or more normalized, verification-worthy claims from an assistant message and estimate assertion strength.
 
 Produces:
 
 ```text
 ClaimMatch {
   matched: boolean
-  phrase?: string
+  claims: Claim[]
+  victory_lap_score: number
+}
+
+Claim {
+  kind: string
+  confidence: "speculation" | "prediction" | "assertion" | "strong_assertion"
+  scope?: string
+  subject?: string
+  source_text: string
 }
 ```
 
-### C. Verifier
+### C. Evidence + verifier engine
 
-Responsibility: run the configured local verification command and map its result to a verdict.
+Responsibility: collect fresh claim-relevant evidence, run an active verifier when needed, and evaluate whether the evidence supports or contradicts each normalized claim.
 
 Produces:
 
 ```text
+ClaimEvaluation {
+  claim: Claim
+  state: "supported" | "contradicted" | "unverified" | "error"
+  evidence?: Evidence[]
+  reason?: string
+}
+
+Evidence {
+  kind: string
+  observed_at: number
+  scope?: string
+  passing?: boolean
+  details?: string
+}
+
 VerificationResult {
-  verdict: "truth" | "lie" | "error"
   exit_code?: number
   stdout: string
   stderr: string
   duration_ms: number
+  error?: string
 }
 ```
+
+The engine should keep claim evaluation separate from low-level command exit codes so a successful but irrelevant or stale command cannot automatically become TRUTH.
 
 ### D. Presentation service
 
@@ -351,7 +553,7 @@ PresentationRequest {
 
 ### E. Configuration
 
-Responsibility: load and validate user settings including trigger phrases, assets, verifier command, timeout, popup duration, and audio state.
+Responsibility: load and validate user settings including claim rules, confidence threshold, claim-specific/default verifiers, assets, timeout, popup duration, and audio state.
 
 ## 13. Data Flow
 
@@ -365,22 +567,33 @@ Integration Adapter
 AssistantMessage
        │
        ▼
-Claim Detector ───── no match ───→ stop
-       │
-      match
+Claim Detector ───── no verification-worthy claim ───→ stop
        │
        ▼
-Verifier
+Normalized claim(s) + victory-lap score
        │
-       ├── command error ─────────→ log error; no verdict
+       ▼
+Evidence Engine
        │
-       ├── exit 0 ────────────────→ TRUTH
+       ├── collect fresh existing evidence if available
        │
-       └── non-zero ──────────────→ LIE
-                                      │
-                                      ▼
-                              Popup + optional sound
+       ├── run claim-specific/default verifier when needed
+       │
+       └── inspect evidence scope + freshness + integrity
+       │
+       ▼
+Claim Evaluation
+       │
+       ├── all relevant claims unsupported/unverified ──→ no verdict
+       ├── evaluation error ────────────────────────────→ log error; no verdict
+       ├── any contradicted claim ──────────────────────→ LIE
+       └── supported claim(s), none contradicted ───────→ TRUTH
+                                                        │
+                                                        ▼
+                                                Popup + optional sound
 ```
+
+When a message contains multiple claims, the presentation service should prefer the most important contradicted claim for a LIE receipt. For TRUTH, it may show the strongest supported claim or remain image-only.
 
 ## 14. Concurrency and Debouncing
 
@@ -480,10 +693,11 @@ A minimal local text log is sufficient.
 Example:
 
 ```text
-[10:14:03] claim detected: "this should now work"
+[10:14:03] claim detected: kind=GENERIC_SUCCESS confidence=prediction score=5
 [10:14:03] running: npm test
 [10:14:11] exit=1 duration=8124ms
-[10:14:11] verdict=LIE
+[10:14:11] evaluation=CONTRADICTED reason="configured verifier failed"
+[10:14:11] verdict=LIE claim=GENERIC_SUCCESS
 ```
 
 Do not build dashboards, databases, or analytics for V1.
@@ -494,11 +708,21 @@ Do not build dashboards, databases, or analytics for V1.
 
 Test:
 
-- trigger phrase matching;
-- punctuation/case handling;
-- false-positive cases;
+- claim-family detection;
+- wording variation and punctuation/case handling;
+- confidence/hedging classification;
+- victory-lap scoring and threshold behavior;
+- false-positive cases from planning, questions, and speculation;
+- compound-claim extraction;
 - message debouncing;
-- exit-code-to-verdict mapping;
+- claim-to-verifier routing;
+- exit-code-to-evidence mapping;
+- `SUPPORTED` / `CONTRADICTED` / `UNVERIFIED` / `ERROR` mapping;
+- stale evidence after a relevant source edit;
+- partial test evidence versus an “all tests pass” claim;
+- file-created/file-changed inspection;
+- git commit/push inspection where supported;
+- verification-integrity warnings for obvious skipped/deleted/weakened tests;
 - timeout mapping;
 - missing asset fallback;
 - config validation;
@@ -506,13 +730,17 @@ Test:
 
 ### Integration tests
 
-Use a fake Claude adapter and small fixture commands that intentionally:
+Use a fake Claude adapter plus fixture projects/events that intentionally exercise:
 
-- exit 0;
-- exit non-zero;
-- time out.
+- a fresh passing verifier;
+- a fresh failing verifier;
+- a verifier timeout;
+- a passing test run followed by a source edit and then a passing claim;
+- a subset test run followed by an “all tests pass” claim;
+- a compound response with both supported and contradicted claims;
+- a file/Git claim that can be checked without the default test command.
 
-Verify that the expected presentation request is emitted.
+Verify that the expected internal claim evaluations and final presentation request are emitted.
 
 ### Manual platform tests
 
@@ -524,7 +752,9 @@ Before release, manually verify:
 - mute behavior;
 - image replacement;
 - Claude Code integration;
-- failed verifier does not block Claude Code.
+- claim receipts/logging are understandable;
+- failed or unverifiable checks do not block Claude Code;
+- no `UNVERIFIED` or `ERROR` state is incorrectly presented as TRUTH/LIE.
 
 ## 21. Platform Scope
 
@@ -574,7 +804,7 @@ Suggested opening:
 >
 > Because “this should work now” is not a test suite.
 >
-> Claude says it fixed the bug. We run your verification command. If reality disagrees, you get a giant **LIE** popup.
+> Claude takes a victory lap. We demand receipts. If fresh, relevant evidence disagrees, you get a giant **LIE** popup.
 
 The README should include:
 
@@ -585,7 +815,7 @@ The README should include:
 - custom image/sound instructions;
 - mute instructions;
 - supported platforms;
-- explanation of what “LIE” means technically;
+- explanation of what “TRUTH”, “LIE”, and internal `UNVERIFIED` mean technically;
 - privacy/security notes.
 
 ## 24. Future Ideas — Explicitly Out of V1
@@ -602,30 +832,54 @@ Potential later additions:
 - model leaderboard;
 - community asset packs;
 - auto-selection of test/build commands;
-- optional semantic classification of success claims.
+- optional LLM-assisted claim classification for ambiguous statements;
+- visible `NO RECEIPTS` / `TECHNICALLY TRUE` / `SUSPICIOUSLY TRUE` verdict themes;
+- deeper verification-integrity analysis beyond deterministic heuristics.
 
 These should not delay the first usable GitHub release.
+
+### Phased MVP boundary
+
+The architecture supports the complete evidence model, but the first usable release should implement it in this order:
+
+1. normalized claim families, confidence classification, victory-lap scoring, and compound extraction;
+2. a default verifier plus configured test, build, and lint routes;
+3. `SUPPORTED`, `CONTRADICTED`, `UNVERIFIED`, and `ERROR` evaluation;
+4. basic evidence freshness using locally observable project mutations;
+5. filesystem and local Git inspection for file and commit claims;
+6. popup, sound, configuration, logging, and Claude Code integration.
+
+Remote push verification, session-derived evidence from tool events, visible third-state themes, and verification-integrity heuristics are post-MVP work. The claim model may represent `PUSHED` in V1, but it remains `UNVERIFIED` unless the user explicitly configures a reliable verifier.
 
 ## 25. MVP Acceptance Criteria
 
 The MVP is complete when all of the following are true:
 
 1. Claude Code output can trigger the detector through a supported integration path.
-2. A configurable success phrase can trigger verification.
-3. The tool runs one user-configured verification command in the active project.
-4. Exit code `0` produces TRUTH.
-5. Non-zero exit code produces LIE.
-6. A user-provided TRUTH image can appear in a centered popup.
-7. A user-provided LIE image can appear in a centered popup.
-8. Each verdict can play a configurable local sound.
-9. Sound can be globally muted.
-10. Popup duration is configurable and the popup can be dismissed manually.
-11. Missing images/sounds do not crash the tool.
-12. A verifier error or timeout does not incorrectly become TRUTH or LIE.
-13. Claude output is never executed as a shell command.
-14. One assistant message cannot accidentally trigger multiple simultaneous verdicts.
-15. Core detector/verifier logic has automated tests.
-16. The repository contains public-facing installation and configuration documentation.
+2. The detector can recognize configurable verification-worthy success claims without requiring exact full-sentence matches.
+3. The detector distinguishes speculation/prediction from stronger assertions well enough to avoid obvious planning-language triggers.
+4. One assistant response may contain multiple normalized claims while still producing at most one presentation event.
+5. At least `TESTS_PASS`, `BUILD_PASSES`, `LINT_CLEAN`, `BUG_FIXED`/generic success, and basic file/Git claim categories can be represented by the claim model, even if some use the default verifier in V1.
+6. The tool can run one user-configured default verification command in the active project.
+7. Claim-specific verification can use the default command, configured commands, or safe built-in local inspection as appropriate.
+8. A passing command becomes TRUTH only when its evidence is fresh, relevant, and sufficient for the claim being evaluated.
+9. Fresh evidence that directly contradicts a claim produces LIE.
+10. Missing, stale, partial, or unrelated evidence becomes `UNVERIFIED` and does not incorrectly produce TRUTH or LIE.
+11. A verifier error or timeout becomes `ERROR` and does not incorrectly produce TRUTH or LIE.
+12. A passing subset of tests cannot by itself prove an “all tests pass” claim.
+13. Evidence generated before a later relevant source mutation cannot prove a post-mutation success claim.
+14. A contradicted claim inside a compound response is enough to produce a LIE presentation, with the contradicted claim recorded when possible.
+15. A user-provided TRUTH image can appear in a centered popup.
+16. A user-provided LIE image can appear in a centered popup.
+17. Each verdict can play a configurable local sound.
+18. Sound can be globally muted.
+19. Popup duration is configurable and the popup can be dismissed manually.
+20. Missing images/sounds do not crash the tool.
+21. Claude output is never executed as a shell command.
+22. Only user-configured verifier commands or fixed built-in inspection operations may execute.
+23. One assistant message cannot accidentally trigger multiple simultaneous verdicts.
+24. Core claim-detection, evidence, freshness, scope, and verifier logic has automated tests.
+25. The repository contains public-facing installation, configuration, verdict-semantics, and privacy/security documentation.
 
 ## 26. Current Integration Note
 

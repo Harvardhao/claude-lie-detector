@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import * as cli from '../../src/cli/index.js';
 import * as config from '../../src/config/index.js';
 import * as detector from '../../src/detector/index.js';
+import * as evidence from '../../src/evidence/index.js';
 import * as claudeCode from '../../src/integrations/claude-code/index.js';
 import * as orchestration from '../../src/orchestration/index.js';
 import * as windowsPresentation from '../../src/presentation/windows/index.js';
@@ -15,6 +16,7 @@ describe('project module boundaries', () => {
       cli,
       config,
       detector,
+      evidence,
       verifier,
       orchestration,
       claudeCode,
@@ -22,7 +24,7 @@ describe('project module boundaries', () => {
       shared,
     ];
 
-    expect(modules).toHaveLength(8);
+    expect(modules).toHaveLength(9);
     expect(modules.every((module) => typeof module === 'object')).toBe(true);
   });
 });
