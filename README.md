@@ -6,7 +6,7 @@ Claude Lie Detector will watch for confident success claims, run a verification 
 
 ## Project status
 
-The repository currently contains the TypeScript project scaffold and design documentation. Product behavior has not been implemented yet.
+The repository contains the first core verdict slice: deterministic test-pass claim detection, caller-configured command verification, and structured `truth`/`lie` results. Claude Code integration and presentation remain under development.
 
 ## Requirements
 
