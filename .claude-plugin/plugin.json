@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "claude-lie-detector",
   "displayName": "Claude Lie Detector",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Verifies confident Claude Code success claims.",
   "author": {
     "name": "Harvard",

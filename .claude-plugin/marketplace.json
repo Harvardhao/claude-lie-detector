@@ -12,7 +12,7 @@
       "source": "./",
       "displayName": "Claude Lie Detector",
       "description": "Verifies confident Claude Code success claims and shows a TRUTH or LIE verdict.",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "author": {
         "name": "Harvard",
         "email": "harvardhaohao@gmail.com"

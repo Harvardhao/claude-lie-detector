@@ -4,6 +4,23 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-08-27
+
+### Fixed
+
+- Claim detection missed common phrasings, so real success claims went
+  `UNVERIFIED` with no verdict. `TESTS_PASS` now also matches "passes both/all
+  tests", "N tests pass", "the (test) suite passes", and "tests are now
+  green/passing"; `BUG_FIXED` now matches plural "bugs fixed", "fixed both
+  bugs", and "fixed the <name> bug".
+- `FILE_CHANGED` / `FILE_CREATED` treated the word after
+  changed/modified/updated/created as a filename, so "changed the condition to
+  `i <= n`" produced a claim about a file named "to" → "File not found" →
+  a false **LIE**. A file claim is now only raised when the target is
+  path-shaped (has a separator or an extension).
+- "all" / "both" / "every" test-pass claims are now marked `scope: all`, so a
+  targeted test command still cannot prove them.
+
 ## [1.0.0] - 2026-08-27
 
 First public release. Windows presentation target; core detection and

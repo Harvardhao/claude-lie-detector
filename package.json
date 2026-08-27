@@ -1,6 +1,6 @@
 {
   "name": "claude-lie-detector",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Because this should work now is not a test suite.",
   "type": "module",
   "private": true,
