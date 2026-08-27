@@ -1,3 +1,10 @@
-# Claude Code integration package
+# Claude Code plugin
 
-This directory is reserved for supported Claude Code hook or plugin metadata. Its exact format will be pinned after verifying the current official integration API.
+Build the project, then test the repository root as a local plugin:
+
+```powershell
+npm run build
+claude --plugin-dir .
+```
+
+The plugin's non-blocking `Stop` hook reads `.claude-lie-detector.json` from the active project and evaluates Claude's final response.

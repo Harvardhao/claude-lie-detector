@@ -36,4 +36,22 @@ describe('project module boundaries', () => {
 
     expect(packageJson.bin).toEqual({ 'claude-lie-detector': 'dist/cli/bin.js' });
   });
+
+  it('packages the Claude Code plugin', async () => {
+    const packageJson = JSON.parse(await readFile('package.json', 'utf8')) as { files?: string[] };
+    expect(packageJson.files).toEqual(expect.arrayContaining(['dist', '.claude-plugin', 'hooks']));
+
+    const manifest = JSON.parse(await readFile('.claude-plugin/plugin.json', 'utf8')) as {
+      name?: string;
+    };
+    expect(manifest.name).toBe('claude-lie-detector');
+
+    const hooks = JSON.parse(await readFile('hooks/hooks.json', 'utf8')) as {
+      hooks?: { Stop?: Array<{ hooks?: Array<{ type?: string; command?: string }> }> };
+    };
+    expect(hooks.hooks?.Stop?.[0]?.hooks?.[0]).toEqual({
+      type: 'command',
+      command: 'node "${CLAUDE_PLUGIN_ROOT}/dist/integrations/claude-code/bin.js"',
+    });
+  });
 });

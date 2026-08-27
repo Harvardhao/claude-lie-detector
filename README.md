@@ -6,7 +6,7 @@ Claude Lie Detector will watch for confident success claims, run a verification 
 
 ## Project status
 
-The repository contains a runnable CLI core with deterministic claim detection, project-configured verification, claim-specific verifier routing, and structured `truth`/`lie` results. Claude Code integration and presentation remain under development.
+The repository contains a runnable CLI core with deterministic claim detection, project-configured verification, claim-specific verifier routing, structured `truth`/`lie` results, and Claude Code Stop-hook integration. Presentation remains under development.
 
 ## Requirements
 
@@ -34,7 +34,14 @@ Run a message through the detector:
 claude-lie-detector --text "All tests pass."
 ```
 
-Use `--cwd`, `--config`, `--verify`, or `--timeout-ms` for temporary overrides. Claude Code integration is not wired yet.
+Build the project, then test the repository root as a local plugin:
+
+```powershell
+npm run build
+claude --plugin-dir .
+```
+
+Use `--cwd`, `--config`, `--verify`, or `--timeout-ms` for temporary overrides.
 
 ## Development
 
