@@ -1,4 +1,5 @@
 .worktrees/
+.claude-lie-detector.log
 node_modules/
 dist/
 coverage/

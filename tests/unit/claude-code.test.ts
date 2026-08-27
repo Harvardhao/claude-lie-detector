@@ -40,6 +40,7 @@ describe('parseStopHookInput', () => {
     expect(parseStopHookInput(event('C:/project', 'All tests pass.'))).toEqual({
       cwd: 'C:/project',
       lastAssistantMessage: 'All tests pass.',
+      eventId: expect.any(String),
     });
   });
 

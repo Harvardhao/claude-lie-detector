@@ -6,7 +6,7 @@ Claude Lie Detector will watch for confident success claims, run a verification 
 
 ## Project status
 
-The repository contains a runnable CLI core with deterministic claim detection, project-configured verification, claim-specific verifier routing, structured `truth`/`lie` results, and Claude Code Stop-hook integration. Presentation remains under development.
+The Windows MVP includes deterministic claim detection, evidence-safe verification, Claude Code Stop-hook integration, and native TRUTH/LIE popup and sound presentation.
 
 ## Requirements
 
@@ -24,7 +24,14 @@ Create `.claude-lie-detector.json` in the project to verify:
   "verifyTests": "npm test",
   "verifyBuild": "npm run build",
   "verifyLint": "npm run lint",
-  "timeoutMs": 120000
+  "timeoutMs": 120000,
+  "popup": true,
+  "popupDurationMs": 1800,
+  "sound": true,
+  "truthImage": "assets/truth.png",
+  "lieImage": "assets/lie.png",
+  "truthSound": "assets/truth.wav",
+  "lieSound": "assets/lie.wav"
 }
 ```
 
@@ -41,7 +48,26 @@ npm run build
 claude --plugin-dir .
 ```
 
-Use `--cwd`, `--config`, `--verify`, or `--timeout-ms` for temporary overrides.
+Paths are relative to the active project. Missing images fall back to centered text; missing sounds are ignored. Use `--cwd`, `--config`, `--verify`, `--timeout-ms`, `--mute`, or `--no-popup` for temporary overrides.
+
+## Verdicts
+
+- **TRUTH** means fresh, relevant configured or local evidence supports at least one detected claim and none is contradicted or errored.
+- **LIE** means fresh evidence directly contradicts at least one claim.
+- `UNVERIFIED` means the available evidence is missing or insufficient; no popup appears.
+- `ERROR` means verification or inspection failed; no TRUTH/LIE popup appears.
+
+The detector recognizes test, build, lint, bug-fix, generic completion, file, local commit, push, implementation-complete, and service-running claims. Remote push claims remain unverified unless a configured verifier can prove them. A targeted test command cannot prove an “all tests pass” claim.
+
+## Local data and security
+
+Claude Lie Detector runs locally. It uploads no source, transcript, or verification output and uses no second model. Claude's text is passed as data only; executable commands come exclusively from `.claude-lie-detector.json`. Fixed local inspection uses filesystem APIs and Git argument arrays.
+
+The tool appends concise diagnostics to `.claude-lie-detector.log` in the active project. That file is ignored by this repository and logging failures never block Claude Code.
+
+## Platform status
+
+Windows is the tested presentation target. Core detection and verification are platform-neutral, but popup/audio use PowerShell, WPF, and WAV playback. Claude Code plugin validation and final popup/audio interaction should be smoke-tested on the release machine.
 
 ## Development
 

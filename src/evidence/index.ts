@@ -57,12 +57,24 @@ export async function inspectClaim(claim: Claim, cwd: string): Promise<ClaimEval
     }
     try {
       await stat(path);
-      return {
-        claim,
-        state: 'supported',
-        reason: 'The claimed file exists in the current project state.',
-        evidence: [{ kind: 'filesystem', observedAt: Date.now(), passing: true, details: claim.subject }],
-      };
+      if (claim.kind === 'FILE_CREATED') {
+        return {
+          claim,
+          state: 'supported',
+          reason: 'The claimed file exists in the current project state.',
+          evidence: [{ kind: 'filesystem', observedAt: Date.now(), passing: true, details: claim.subject }],
+        };
+      }
+      const { stdout: status } = await executeFile('git', ['status', '--porcelain', '--', claim.subject], { cwd }).catch(() => ({ stdout: '' }));
+      const { stdout: committed } = await executeFile('git', ['log', '-1', '--format=%H', '--', claim.subject], { cwd }).catch(() => ({ stdout: '' }));
+      return status.trim() || committed.trim()
+        ? {
+            claim,
+            state: 'supported',
+            reason: 'Git records a current or committed change for the file.',
+            evidence: [{ kind: 'git', observedAt: Date.now(), passing: true, details: status.trim() || committed.trim() }],
+          }
+        : { claim, state: 'unverified', reason: 'The file exists, but no Git change evidence was found.' };
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         return { claim, state: 'contradicted', reason: `File not found: ${claim.subject}` };
@@ -72,9 +84,14 @@ export async function inspectClaim(claim: Claim, cwd: string): Promise<ClaimEval
   }
   if (claim.kind === 'COMMITTED') {
     try {
-      const { stdout } = await executeFile('git', ['log', '-1', '--format=%H'], { cwd });
-      return stdout.trim()
-        ? { claim, state: 'supported', reason: 'A local commit exists.', evidence: [{ kind: 'git', observedAt: Date.now(), passing: true, details: stdout.trim() }] }
+      const [{ stdout: commit }, { stdout: status }] = await Promise.all([
+        executeFile('git', ['log', '-1', '--format=%H'], { cwd }),
+        executeFile('git', ['status', '--porcelain'], { cwd }),
+      ]);
+      return commit.trim() && !status.trim()
+        ? { claim, state: 'supported', reason: 'A local commit exists and the worktree is clean.', evidence: [{ kind: 'git', observedAt: Date.now(), passing: true, details: commit.trim() }] }
+        : commit.trim()
+          ? { claim, state: 'unverified', reason: 'A local commit exists, but uncommitted changes remain.' }
         : { claim, state: 'unverified', reason: 'No local commit was found.' };
     } catch (error) {
       return { claim, state: 'error', reason: error instanceof Error ? error.message : String(error) };

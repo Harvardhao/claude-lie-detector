@@ -46,11 +46,16 @@ describe('runCli', () => {
     const cwd = await project({
       verify: `${node} -e "process.exit(1)"`,
       verifyTests: `${node} -e "setTimeout(() => {}, 1_000)"`,
-      timeoutMs: 10,
+      timeoutMs: 250,
     });
     const result = await runCli(['--text', 'The bug is fixed and all tests pass.'], cwd);
     expect(result.exitCode).toBe(2);
-    expect(JSON.parse(result.stdout).verifications).toEqual(
+    const evaluation = JSON.parse(result.stdout);
+    expect(evaluation.evaluations).toEqual(expect.arrayContaining([
+      expect.objectContaining({ state: 'contradicted' }),
+      expect.objectContaining({ state: 'error' }),
+    ]));
+    expect(evaluation.verifications).toEqual(
       expect.arrayContaining([expect.objectContaining({ result: expect.objectContaining({ error: expect.any(String) }) })]),
     );
   });
