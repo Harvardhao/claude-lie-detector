@@ -3,5 +3,9 @@
   "name": "claude-lie-detector",
   "displayName": "Claude Lie Detector",
   "version": "0.0.0",
-  "description": "Verifies confident Claude Code success claims."
+  "description": "Verifies confident Claude Code success claims.",
+  "author": {
+    "name": "Harvard",
+    "email": "harvardhaohao@gmail.com"
+  }
 }
