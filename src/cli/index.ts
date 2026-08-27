@@ -36,10 +36,10 @@ export async function runCli(args: string[], defaultCwd = process.cwd()): Promis
     });
     const stdout = `${JSON.stringify(evaluation)}\n`;
 
-    if (evaluation.verdict === 'lie') return { exitCode: 1, stdout, stderr: '' };
     if (evaluation.verifications?.some(({ result }) => result.error !== undefined)) {
       return { exitCode: 2, stdout, stderr: '' };
     }
+    if (evaluation.verdict === 'lie') return { exitCode: 1, stdout, stderr: '' };
     return { exitCode: 0, stdout, stderr: '' };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

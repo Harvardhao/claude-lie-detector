@@ -42,6 +42,19 @@ describe('runCli', () => {
     expect(JSON.parse(result.stdout)).toMatchObject({ verdict: 'lie' });
   });
 
+  it('returns exit 2 when one routed verifier lies and another errors', async () => {
+    const cwd = await project({
+      verify: `${node} -e "process.exit(1)"`,
+      verifyTests: `${node} -e "setTimeout(() => {}, 1_000)"`,
+      timeoutMs: 10,
+    });
+    const result = await runCli(['--text', 'The bug is fixed and all tests pass.'], cwd);
+    expect(result.exitCode).toBe(2);
+    expect(JSON.parse(result.stdout).verifications).toEqual(
+      expect.arrayContaining([expect.objectContaining({ result: expect.objectContaining({ error: expect.any(String) }) })]),
+    );
+  });
+
   it('returns empty evaluation without running a verifier', async () => {
     const cwd = await project({ verify: 'command-that-must-not-run' });
     const result = await runCli(['--text', 'I am still investigating.'], cwd);
