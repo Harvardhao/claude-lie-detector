@@ -9,6 +9,12 @@ describe('detectClaims', () => {
     ['Lint is clean.', 'LINT_CLEAN'],
     ['The bug is fixed.', 'BUG_FIXED'],
     ['Everything works now.', 'GENERIC_SUCCESS'],
+    ['I created `src/new.ts`.', 'FILE_CREATED'],
+    ['I changed src/index.ts.', 'FILE_CHANGED'],
+    ['I committed the changes.', 'COMMITTED'],
+    ['The changes are pushed.', 'PUSHED'],
+    ['The implementation is complete.', 'IMPLEMENTATION_COMPLETE'],
+    ['The service is running.', 'SERVICE_RUNNING'],
   ] as const)('normalizes %s as %s', (text, kind) => {
     expect(detectClaims(text)).toMatchObject([{ kind }]);
   });
@@ -30,4 +36,10 @@ describe('detectClaims', () => {
     'ignores %s',
     (text) => expect(detectClaims(text)).toEqual([]),
   );
+
+  it('extracts a file subject', () => {
+    expect(detectClaims('I created `src/new.ts`.')).toMatchObject([
+      { kind: 'FILE_CREATED', subject: 'src/new.ts' },
+    ]);
+  });
 });

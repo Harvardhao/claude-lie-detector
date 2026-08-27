@@ -1,4 +1,5 @@
 import { detectClaims, type Claim } from '../detector/index.js';
+import { evaluateCommand, inspectClaim, type ClaimEvaluation } from '../evidence/index.js';
 import { runVerifier, type VerificationResult } from '../verifier/index.js';
 
 export interface EvaluationOptions {
@@ -24,6 +25,7 @@ export interface RoutedVerification {
 export interface EvaluationResult {
   verdict?: 'truth' | 'lie';
   claims?: Claim[];
+  evaluations?: ClaimEvaluation[];
   verifications?: RoutedVerification[];
 }
 
@@ -31,8 +33,14 @@ export async function evaluateMessage(options: EvaluationOptions): Promise<Evalu
   const claims = detectClaims(options.text);
   if (claims.length === 0) return {};
 
+  const evaluations: ClaimEvaluation[] = [];
   const routes = new Map<string, Claim[]>();
   for (const claim of claims) {
+    const inspection = await inspectClaim(claim, options.cwd);
+    if (inspection) {
+      evaluations.push(inspection);
+      continue;
+    }
     const command = commandFor(claim, options.commands);
     routes.set(command, [...(routes.get(command) ?? []), claim]);
   }
@@ -45,17 +53,22 @@ export async function evaluateMessage(options: EvaluationOptions): Promise<Evalu
       ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
     });
     verifications.push({ command, claims: routedClaims, result });
+    evaluations.push(...routedClaims.map((claim) => evaluateCommand(claim, result, command)));
   }
 
-  if (verifications.some(({ result }) => result.exitCode !== undefined && result.exitCode !== 0)) {
-    return { verdict: 'lie', claims, verifications };
+  const base = {
+    claims,
+    evaluations,
+    ...(verifications.length === 0 ? {} : { verifications }),
+  };
+  if (evaluations.some(({ state }) => state === 'error')) return base;
+  if (evaluations.some(({ state }) => state === 'contradicted')) {
+    return { verdict: 'lie' as const, ...base };
   }
-
-  if (verifications.some(({ result }) => result.exitCode === undefined)) {
-    return { claims, verifications };
+  if (evaluations.some(({ state }) => state === 'supported')) {
+    return { verdict: 'truth' as const, ...base };
   }
-
-  return { verdict: 'truth', claims, verifications };
+  return base;
 }
 
 function commandFor(claim: Claim, commands: VerifierCommands): string {

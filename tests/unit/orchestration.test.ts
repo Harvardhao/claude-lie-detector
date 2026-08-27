@@ -18,6 +18,7 @@ describe('evaluateMessage', () => {
 
     expect(result.verdict).toBe('truth');
     expect(result.verifications?.[0]?.command).toBe(tests);
+    expect(result.evaluations).toMatchObject([{ state: 'supported' }]);
   });
 
   it('falls back to the default verifier', async () => {
@@ -58,6 +59,9 @@ describe('evaluateMessage', () => {
 
     expect(result.verdict).toBe('lie');
     expect(result.verifications).toHaveLength(2);
+    expect(result.evaluations).toEqual(
+      expect.arrayContaining([expect.objectContaining({ state: 'contradicted' })]),
+    );
   });
 
   it('does not run verification without a claim', async () => {
@@ -80,5 +84,29 @@ describe('evaluateMessage', () => {
 
     expect(result.verdict).toBeUndefined();
     expect(result.verifications?.[0]?.result.error).toBe('Verifier timed out after 10ms');
+    expect(result.evaluations).toMatchObject([{ state: 'error' }]);
+  });
+
+  it('returns unverified for pushed claims without configured evidence', async () => {
+    const result = await evaluateMessage({
+      text: 'The changes are pushed.',
+      commands: { default: `${node} -e "process.exit(0)"` },
+      cwd: process.cwd(),
+    });
+
+    expect(result.verdict).toBeUndefined();
+    expect(result.evaluations).toMatchObject([{ state: 'unverified' }]);
+    expect(result.verifications).toBeUndefined();
+  });
+
+  it('does not let a targeted test command prove all tests pass', async () => {
+    const result = await evaluateMessage({
+      text: 'All tests pass.',
+      commands: { default: `${node} -e "process.exit(0)" tests/unit/one.test.ts` },
+      cwd: process.cwd(),
+    });
+
+    expect(result.verdict).toBeUndefined();
+    expect(result.evaluations).toMatchObject([{ state: 'unverified' }]);
   });
 });
