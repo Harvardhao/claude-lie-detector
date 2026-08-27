@@ -37,7 +37,8 @@ The compiled `dist/` is committed, so a marketplace or `git clone` install needs
 
 ## Configuration
 
-Create `.claude-lie-detector.json` in the project to verify:
+Create `.claude-lie-detector.json` in the project to verify. Only `verify` is
+required:
 
 ```json
 {
@@ -49,10 +50,10 @@ Create `.claude-lie-detector.json` in the project to verify:
   "popup": true,
   "popupDurationMs": 1800,
   "sound": true,
-  "truthImage": "assets/truth.png",
-  "lieImage": "assets/lie.png",
-  "truthSound": "assets/truth.wav",
-  "lieSound": "assets/lie.wav"
+  "truthImage": "my-truth.png",
+  "lieImage": "my-lie.png",
+  "truthSound": "my-truth.wav",
+  "lieSound": "my-lie.wav"
 }
 ```
 
@@ -62,7 +63,11 @@ Run a message through the detector directly:
 claude-lie-detector --text "All tests pass."
 ```
 
-Paths are relative to the active project. Missing images fall back to centered text; missing sounds are ignored. Use `--cwd`, `--config`, `--verify`, `--timeout-ms`, `--mute`, or `--no-popup` for temporary overrides.
+TRUTH and LIE ship with default images and sounds. The `truthImage`, `lieImage`,
+`truthSound`, and `lieSound` keys override them per project, with paths relative
+to the active project. A missing image falls back to centered text; a missing
+sound is silent. Use `--cwd`, `--config`, `--verify`, `--timeout-ms`, `--mute`,
+or `--no-popup` for temporary overrides.
 
 ## Verdicts
 

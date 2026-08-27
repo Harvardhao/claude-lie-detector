@@ -27,6 +27,10 @@ verification are platform-neutral.
 - Native Windows presentation: one centered, topmost TRUTH/LIE popup with
   configurable duration, manual dismissal, optional image, and optional local
   WAV playback; missing assets degrade to text or silence.
+- Bundled default verdict media (`assets/truth.png`, `assets/lie.png`,
+  `assets/truth.wav`, `assets/lie.wav`), used automatically when a project does
+  not set `truthImage` / `lieImage` / `truthSound` / `lieSound`. Overridable
+  via `CLAUDE_LIE_DETECTOR_ASSETS_DIR`.
 - `--cwd`, `--config`, `--verify`, `--timeout-ms`, `--mute`, and `--no-popup`
   CLI overrides.
 - Concise local diagnostics appended to `.claude-lie-detector.log`.

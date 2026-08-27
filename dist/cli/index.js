@@ -1,4 +1,6 @@
+import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { loadConfig } from '../config/index.js';
 import { evaluateMessage } from '../orchestration/index.js';
 import { presentVerdict } from '../presentation/windows/index.js';
@@ -25,8 +27,8 @@ export async function runCli(args, defaultCwd = process.cwd()) {
             popup: !parsed.noPopup && (config.popup ?? true),
             durationMs: config.popupDurationMs ?? 1_800,
             soundEnabled: !parsed.mute && (config.sound ?? true),
-            ...resolveAsset(evaluation.verdict === 'truth' ? config.truthImage : config.lieImage, parsed.cwd, 'imagePath'),
-            ...resolveAsset(evaluation.verdict === 'truth' ? config.truthSound : config.lieSound, parsed.cwd, 'soundPath'),
+            ...resolveAsset(evaluation.verdict === 'truth' ? config.truthImage : config.lieImage, parsed.cwd, 'imagePath', evaluation.verdict === 'truth' ? 'truthImage' : 'lieImage'),
+            ...resolveAsset(evaluation.verdict === 'truth' ? config.truthSound : config.lieSound, parsed.cwd, 'soundPath', evaluation.verdict === 'truth' ? 'truthSound' : 'lieSound'),
         };
         if (evaluation.verifications?.some(({ result }) => result.error !== undefined)) {
             return { exitCode: 2, stdout, stderr: '' };
@@ -97,7 +99,33 @@ function parseArgs(args, defaultCwd) {
         ...(timeoutMs === undefined ? {} : { timeoutMs }),
     };
 }
-function resolveAsset(value, cwd, key) {
-    return value === undefined ? {} : { [key]: resolve(cwd, value) };
+const BUNDLED_ASSET_FILES = {
+    truthImage: 'truth.png',
+    lieImage: 'lie.png',
+    truthSound: 'truth.wav',
+    lieSound: 'lie.wav',
+};
+/**
+ * Directory holding the media shipped with the package. Overridable via
+ * CLAUDE_LIE_DETECTOR_ASSETS_DIR (used by tests and relocated installs).
+ */
+function bundledAssetsDir() {
+    return process.env.CLAUDE_LIE_DETECTOR_ASSETS_DIR
+        ?? fileURLToPath(new URL('../../assets/', import.meta.url));
+}
+function bundledAsset(name) {
+    const path = resolve(bundledAssetsDir(), BUNDLED_ASSET_FILES[name]);
+    return existsSync(path) ? path : undefined;
+}
+/**
+ * A project's config path wins when set (a missing file still degrades to text
+ * or silence in the presenter). Otherwise fall back to the bundled default,
+ * but only when that file actually exists.
+ */
+function resolveAsset(value, cwd, key, bundled) {
+    if (value !== undefined)
+        return { [key]: resolve(cwd, value) };
+    const fallback = bundledAsset(bundled);
+    return fallback ? { [key]: fallback } : {};
 }
 //# sourceMappingURL=index.js.map

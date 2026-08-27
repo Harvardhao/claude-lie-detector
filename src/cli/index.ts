@@ -1,4 +1,6 @@
+import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { loadConfig } from '../config/index.js';
 import { evaluateMessage, type VerifierCommands } from '../orchestration/index.js';
@@ -44,8 +46,18 @@ export async function runCli(args: string[], defaultCwd = process.cwd()): Promis
       popup: !parsed.noPopup && (config.popup ?? true),
       durationMs: config.popupDurationMs ?? 1_800,
       soundEnabled: !parsed.mute && (config.sound ?? true),
-      ...resolveAsset(evaluation.verdict === 'truth' ? config.truthImage : config.lieImage, parsed.cwd, 'imagePath'),
-      ...resolveAsset(evaluation.verdict === 'truth' ? config.truthSound : config.lieSound, parsed.cwd, 'soundPath'),
+      ...resolveAsset(
+        evaluation.verdict === 'truth' ? config.truthImage : config.lieImage,
+        parsed.cwd,
+        'imagePath',
+        evaluation.verdict === 'truth' ? 'truthImage' : 'lieImage',
+      ),
+      ...resolveAsset(
+        evaluation.verdict === 'truth' ? config.truthSound : config.lieSound,
+        parsed.cwd,
+        'soundPath',
+        evaluation.verdict === 'truth' ? 'truthSound' : 'lieSound',
+      ),
     } satisfies PresentationRequest;
 
     if (evaluation.verifications?.some(({ result }) => result.error !== undefined)) {
@@ -114,10 +126,41 @@ function parseArgs(args: string[], defaultCwd: string): ParsedArgs {
   };
 }
 
+const BUNDLED_ASSET_FILES = {
+  truthImage: 'truth.png',
+  lieImage: 'lie.png',
+  truthSound: 'truth.wav',
+  lieSound: 'lie.wav',
+} as const;
+
+type BundledAsset = keyof typeof BUNDLED_ASSET_FILES;
+
+/**
+ * Directory holding the media shipped with the package. Overridable via
+ * CLAUDE_LIE_DETECTOR_ASSETS_DIR (used by tests and relocated installs).
+ */
+function bundledAssetsDir(): string {
+  return process.env.CLAUDE_LIE_DETECTOR_ASSETS_DIR
+    ?? fileURLToPath(new URL('../../assets/', import.meta.url));
+}
+
+function bundledAsset(name: BundledAsset): string | undefined {
+  const path = resolve(bundledAssetsDir(), BUNDLED_ASSET_FILES[name]);
+  return existsSync(path) ? path : undefined;
+}
+
+/**
+ * A project's config path wins when set (a missing file still degrades to text
+ * or silence in the presenter). Otherwise fall back to the bundled default,
+ * but only when that file actually exists.
+ */
 function resolveAsset(
   value: string | undefined,
   cwd: string,
   key: 'imagePath' | 'soundPath',
+  bundled: BundledAsset,
 ): Partial<PresentationRequest> {
-  return value === undefined ? {} : { [key]: resolve(cwd, value) };
+  if (value !== undefined) return { [key]: resolve(cwd, value) };
+  const fallback = bundledAsset(bundled);
+  return fallback ? { [key]: fallback } : {};
 }

@@ -47,6 +47,8 @@ Feeds the JSON a real `Stop` hook would send into the compiled binary.
 | 2.4 | delete `.claude-lie-detector.json`, rerun 2.1 | `systemMessage` contains `Lie Detector error: Configuration file not found:`; no popup; exit code 0 |
 | 2.5 | pipe in `{` (invalid JSON) | `systemMessage` is `Lie Detector error: Invalid Claude Code hook JSON.`; exit code 0 |
 | 2.6 | after any run, open `$proj\.claude-lie-detector.log` | one readable line per run: claim/verdict/error, timestamps present, understandable at a glance |
+| 2.7 | with a config that sets no `truthImage`/`truthSound`, rerun 2.1 | popup shows the bundled `assets/truth.png` and plays `assets/truth.wav` with no per-project config |
+| 2.8 | add `"truthImage": "custom.png"` (a real file in `$proj`) and rerun 2.1 | popup shows `custom.png`, not the bundled image |
 
 ## 3. Live Claude Code integration
 
