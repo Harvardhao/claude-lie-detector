@@ -24,8 +24,17 @@ describe('detectClaims', () => {
     'node --test now passes both tests (2 pass, 0 fail).',
     'passed all tests',
     'The full test suite passes.',
+    'Test result: 2 passed, 0 failed.',
+    '2 passed and 0 failures',
   ] as const)('recognizes %s as a test-pass claim', (text) => {
     expect(detectClaims(text)).toMatchObject([{ kind: 'TESTS_PASS' }]);
+  });
+
+  it.each([
+    '3 passed, 1 failed — still debugging.',
+    'Currently 2 passed, 2 failing.',
+  ] as const)('does not treat a run with failures as a pass: %s', (text) => {
+    expect(detectClaims(text)).toEqual([]);
   });
 
   it.each([

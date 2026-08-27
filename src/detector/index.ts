@@ -29,7 +29,7 @@ const CLAIM_PATTERNS: ReadonlyArray<readonly [ClaimKind, RegExp]> = [
   ['SERVICE_RUNNING', /\b(?:the\s+)?(?:server|service)\s+is\s+running\b/gi],
   [
     'TESTS_PASS',
-    /\b(?:(?:all\s+|both\s+|every\s+|\d+(?:\s*\/\s*\d+)?\s+)?tests?\s+(?:pass(?:ed|es|ing)?|are\s+(?:now\s+)?(?:green|passing))|pass(?:es|ed)\s+(?:(?:all|both|every|\d+)\s+)?(?:the\s+)?tests|(?:the\s+)?(?:full\s+|whole\s+|entire\s+)?(?:test\s+)?suite\s+(?:pass(?:ed|es)?|is\s+(?:green|passing))|(?:npm\s+test|pytest|vitest|jest|node\s+--test)\s+pass(?:ed|es)?)\b/gi,
+    /\b(?:(?:all\s+|both\s+|every\s+|\d+(?:\s*\/\s*\d+)?\s+)?tests?\s+(?:pass(?:ed|es|ing)?|are\s+(?:now\s+)?(?:green|passing))|pass(?:es|ed)\s+(?:(?:all|both|every|\d+)\s+)?(?:the\s+)?tests|(?:the\s+)?(?:full\s+|whole\s+|entire\s+)?(?:test\s+)?suite\s+(?:pass(?:ed|es)?|is\s+(?:green|passing))|(?:npm\s+test|pytest|vitest|jest|node\s+--test)\s+pass(?:ed|es)?|\d+\s+passed\s*(?:,|and|;)?\s*(?:with\s+)?0\s+fail(?:ed|ing|ures)?)\b/gi,
   ],
   [
     'BUILD_PASSES',
