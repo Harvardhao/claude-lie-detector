@@ -45,7 +45,9 @@ describe('Claude Code hook executable', () => {
       last_assistant_message: 'The bug is fixed.',
     }));
 
-    expect(JSON.parse(result.stdout)).toEqual({ systemMessage: 'Lie Detector: TRUTH' });
+    expect(JSON.parse(result.stdout)).toEqual({
+      hookSpecificOutput: { hookEventName: 'Stop', systemMessage: 'Lie Detector: TRUTH' },
+    });
     expect(result.stderr).toBe('');
     expect(result.code).toBe(0);
   });
@@ -53,7 +55,10 @@ describe('Claude Code hook executable', () => {
   it('prints an error notification and still exits zero', async () => {
     const result = await invoke('{');
     expect(JSON.parse(result.stdout)).toEqual({
-      systemMessage: 'Lie Detector error: Invalid Claude Code hook JSON.',
+      hookSpecificOutput: {
+        hookEventName: 'Stop',
+        systemMessage: 'Lie Detector error: Invalid Claude Code hook JSON.',
+      },
     });
     expect(result.stderr).toBe('');
     expect(result.code).toBe(0);

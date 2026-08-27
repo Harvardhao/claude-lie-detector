@@ -1,0 +1,27 @@
+{
+  "$schema": "https://www.schemastore.org/claude-code-marketplace.json",
+  "name": "claude-lie-detector",
+  "owner": {
+    "name": "Harvard",
+    "email": "harvardhaohao@gmail.com",
+    "url": "https://github.com/Harvardhao"
+  },
+  "plugins": [
+    {
+      "name": "claude-lie-detector",
+      "source": "./",
+      "displayName": "Claude Lie Detector",
+      "description": "Verifies confident Claude Code success claims and shows a TRUTH or LIE verdict.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Harvard",
+        "email": "harvardhaohao@gmail.com"
+      },
+      "homepage": "https://github.com/Harvardhao/claude-lie-detector#readme",
+      "repository": "https://github.com/Harvardhao/claude-lie-detector",
+      "license": "MIT",
+      "keywords": ["verification", "testing", "hooks"],
+      "category": "testing"
+    }
+  ]
+}

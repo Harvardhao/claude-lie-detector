@@ -11,6 +11,18 @@ export interface HookOutput {
   systemMessage?: string;
 }
 
+/**
+ * Serialize the internal hook result into the JSON shape current Claude Code
+ * reads from a Stop hook's stdout. A turn with nothing to report emits `{}`.
+ * See https://code.claude.com/docs/en/hooks (Stop hook output).
+ */
+export function serializeHookOutput(output: HookOutput): string {
+  const payload = output.systemMessage
+    ? { hookSpecificOutput: { hookEventName: 'Stop', systemMessage: output.systemMessage } }
+    : {};
+  return `${JSON.stringify(payload)}\n`;
+}
+
 export function parseStopHookInput(source: string): StopHookInput {
   let value: unknown;
   try {

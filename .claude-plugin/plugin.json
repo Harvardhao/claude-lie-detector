@@ -2,10 +2,14 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "claude-lie-detector",
   "displayName": "Claude Lie Detector",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "Verifies confident Claude Code success claims.",
   "author": {
     "name": "Harvard",
     "email": "harvardhaohao@gmail.com"
-  }
+  },
+  "homepage": "https://github.com/Harvardhao/claude-lie-detector#readme",
+  "repository": "https://github.com/Harvardhao/claude-lie-detector",
+  "license": "MIT",
+  "keywords": ["verification", "testing", "hooks"]
 }

@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   parseStopHookInput,
   runClaudeCodeHook,
+  serializeHookOutput,
 } from '../../src/integrations/claude-code/index.js';
 
 const node = JSON.stringify(process.execPath);
@@ -51,6 +52,18 @@ describe('parseStopHookInput', () => {
     [JSON.stringify({ hook_event_name: 'Stop', cwd: 'C:/project' }), 'Claude Code hook "last_assistant_message" must be a string.'],
   ])('rejects invalid input %#', (source, message) => {
     expect(() => parseStopHookInput(source)).toThrow(message);
+  });
+});
+
+describe('serializeHookOutput', () => {
+  it('wraps a message in the Claude Code Stop output shape', () => {
+    expect(JSON.parse(serializeHookOutput({ systemMessage: 'Lie Detector: TRUTH' }))).toEqual({
+      hookSpecificOutput: { hookEventName: 'Stop', systemMessage: 'Lie Detector: TRUTH' },
+    });
+  });
+
+  it('emits an empty object when there is nothing to report', () => {
+    expect(serializeHookOutput({})).toBe('{}\n');
   });
 });
 
