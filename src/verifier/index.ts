@@ -1,4 +1,4 @@
-import { exec } from 'node:child_process';
+import { exec, execFile } from 'node:child_process';
 
 export interface VerifierOptions {
   command: string;
@@ -22,18 +22,29 @@ export function runVerifier({
   const startedAt = performance.now();
 
   return new Promise((resolve) => {
-    exec(command, { cwd, timeout: timeoutMs }, (error, stdout, stderr) => {
+    let timedOut = false;
+    const child = exec(command, { cwd }, (error, stdout, stderr) => {
+      clearTimeout(timer);
       const durationMs = performance.now() - startedAt;
 
-      if (!error) {
-        resolve({ exitCode: 0, stdout, stderr, durationMs });
-      } else if (error.killed) {
+      if (timedOut) {
         resolve({ stdout, stderr, durationMs, error: `Verifier timed out after ${timeoutMs}ms` });
+      } else if (!error) {
+        resolve({ exitCode: 0, stdout, stderr, durationMs });
       } else if (typeof error.code === 'number') {
         resolve({ exitCode: error.code, stdout, stderr, durationMs });
       } else {
         resolve({ stdout, stderr, durationMs, error: error.message });
       }
     });
+
+    const timer = setTimeout(() => {
+      timedOut = true;
+      if (process.platform === 'win32' && child.pid !== undefined) {
+        execFile('taskkill', ['/pid', String(child.pid), '/T', '/F']);
+      } else {
+        child.kill();
+      }
+    }, timeoutMs);
   });
 }
