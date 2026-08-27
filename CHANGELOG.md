@@ -4,6 +4,21 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2026-08-27
+
+### Fixed
+
+- `TESTS_PASS` now also recognizes test-count summaries like "2 passed, 0
+  failed" / "N passed and 0 failures". Claude routinely reports results this
+  way rather than saying "all tests pass", so a genuine green run was going
+  `UNVERIFIED` with no verdict.
+
+### Known limitation
+
+Claim detection is still literal pattern matching over the assistant's final
+message (`src/detector/index.ts`) — no model, by design. Phrasings outside the
+patterns produce no verdict. Broader coverage is ongoing.
+
 ## [1.0.1] - 2026-08-27
 
 ### Fixed
