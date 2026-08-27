@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 
 import * as cli from '../../src/cli/index.js';
@@ -26,5 +27,13 @@ describe('project module boundaries', () => {
 
     expect(modules).toHaveLength(9);
     expect(modules.every((module) => typeof module === 'object')).toBe(true);
+  });
+
+  it('exposes the compiled CLI executable', async () => {
+    const packageJson = JSON.parse(await readFile('package.json', 'utf8')) as {
+      bin?: Record<string, string>;
+    };
+
+    expect(packageJson.bin).toEqual({ 'claude-lie-detector': 'dist/cli/bin.js' });
   });
 });

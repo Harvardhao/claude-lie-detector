@@ -4,6 +4,9 @@
   "description": "Because this should work now is not a test suite.",
   "type": "module",
   "private": true,
+  "bin": {
+    "claude-lie-detector": "dist/cli/bin.js"
+  },
   "engines": {
     "node": ">=22"
   },

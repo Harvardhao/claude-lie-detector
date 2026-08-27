@@ -14,7 +14,7 @@ export async function loadConfig(path: string): Promise<ProjectConfig> {
     source = await readFile(path, 'utf8');
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      throw new Error(`Configuration file not found: ${path}`);
+      throw new Error(`Configuration file not found: ${path}`, { cause: error });
     }
     throw error;
   }
