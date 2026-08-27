@@ -56,4 +56,22 @@ describe('loadConfig', () => {
     const path = join(tmpdir(), `missing-lie-detector-${Date.now()}.json`);
     await expect(loadConfig(path)).rejects.toThrow(`Configuration file not found: ${path}`);
   });
+
+  it('loads presentation settings', async () => {
+    const path = await configFile(JSON.stringify({
+      verify: 'npm test',
+      popup: false,
+      popupDurationMs: 2_500,
+      sound: false,
+      truthImage: 'truth.png',
+      lieSound: 'lie.wav',
+    }));
+    await expect(loadConfig(path)).resolves.toMatchObject({
+      popup: false,
+      popupDurationMs: 2_500,
+      sound: false,
+      truthImage: 'truth.png',
+      lieSound: 'lie.wav',
+    });
+  });
 });

@@ -68,6 +68,12 @@ describe('runCli', () => {
     expect(JSON.parse(result.stdout)).toMatchObject({ verdict: 'truth' });
   });
 
+  it('applies temporary presentation controls', async () => {
+    const cwd = await project({ verify: `${node} -e "process.exit(0)"` });
+    const result = await runCli(['--text', 'The bug is fixed.', '--mute', '--no-popup'], cwd);
+    expect(result.presentation).toMatchObject({ popup: false, soundEnabled: false });
+  });
+
   it('uses explicit cwd and config paths', async () => {
     const cwd = await project({ verify: `${node} -e "process.exit(1)"` });
     await writeFile(join(cwd, 'custom.json'), JSON.stringify({ verify: `${node} -e "process.exit(0)"` }), 'utf8');

@@ -2,11 +2,13 @@ import { resolve } from 'node:path';
 
 import { loadConfig } from '../config/index.js';
 import { evaluateMessage, type VerifierCommands } from '../orchestration/index.js';
+import { presentVerdict, type PresentationRequest } from '../presentation/windows/index.js';
 
 export interface CliResult {
   exitCode: 0 | 1 | 2;
   stdout: string;
   stderr: string;
+  presentation?: PresentationRequest;
 }
 
 interface ParsedArgs {
@@ -15,6 +17,8 @@ interface ParsedArgs {
   configPath: string;
   verify?: string;
   timeoutMs?: number;
+  mute: boolean;
+  noPopup: boolean;
 }
 
 export async function runCli(args: string[], defaultCwd = process.cwd()): Promise<CliResult> {
@@ -35,16 +39,30 @@ export async function runCli(args: string[], defaultCwd = process.cwd()): Promis
       ...(timeoutMs === undefined ? {} : { timeoutMs }),
     });
     const stdout = `${JSON.stringify(evaluation)}\n`;
+    const presentation = evaluation.verdict === undefined ? undefined : {
+      verdict: evaluation.verdict,
+      popup: !parsed.noPopup && (config.popup ?? true),
+      durationMs: config.popupDurationMs ?? 1_800,
+      soundEnabled: !parsed.mute && (config.sound ?? true),
+      ...resolveAsset(evaluation.verdict === 'truth' ? config.truthImage : config.lieImage, parsed.cwd, 'imagePath'),
+      ...resolveAsset(evaluation.verdict === 'truth' ? config.truthSound : config.lieSound, parsed.cwd, 'soundPath'),
+    } satisfies PresentationRequest;
 
     if (evaluation.verifications?.some(({ result }) => result.error !== undefined)) {
       return { exitCode: 2, stdout, stderr: '' };
     }
-    if (evaluation.verdict === 'lie') return { exitCode: 1, stdout, stderr: '' };
-    return { exitCode: 0, stdout, stderr: '' };
+    if (evaluation.verdict === 'lie') {
+      return { exitCode: 1, stdout, stderr: '', ...(presentation ? { presentation } : {}) };
+    }
+    return { exitCode: 0, stdout, stderr: '', ...(presentation ? { presentation } : {}) };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return { exitCode: 2, stdout: '', stderr: `Lie Detector: ${message}\n` };
   }
+}
+
+export async function presentCliResult(result: CliResult): Promise<string | undefined> {
+  return result.presentation ? presentVerdict(result.presentation) : undefined;
 }
 
 function parseArgs(args: string[], defaultCwd: string): ParsedArgs {
@@ -53,9 +71,17 @@ function parseArgs(args: string[], defaultCwd: string): ParsedArgs {
   let configValue: string | undefined;
   let verify: string | undefined;
   let timeoutMs: number | undefined;
+  let mute = false;
+  let noPopup = false;
 
-  for (let index = 0; index < args.length; index += 2) {
+  for (let index = 0; index < args.length;) {
     const flag = args[index];
+    if (flag === '--mute' || flag === '--no-popup') {
+      if (flag === '--mute') mute = true;
+      else noPopup = true;
+      index += 1;
+      continue;
+    }
     if (!['--text', '--cwd', '--config', '--verify', '--timeout-ms'].includes(flag ?? '')) {
       throw new Error(`Unknown argument: ${flag}`);
     }
@@ -72,6 +98,7 @@ function parseArgs(args: string[], defaultCwd: string): ParsedArgs {
         throw new Error('--timeout-ms must be a positive integer.');
       }
     }
+    index += 2;
   }
 
   if (text === undefined) throw new Error('Missing required --text.');
@@ -80,7 +107,17 @@ function parseArgs(args: string[], defaultCwd: string): ParsedArgs {
     text,
     cwd,
     configPath: resolve(cwd, configValue ?? '.claude-lie-detector.json'),
+    mute,
+    noPopup,
     ...(verify === undefined ? {} : { verify }),
     ...(timeoutMs === undefined ? {} : { timeoutMs }),
   };
+}
+
+function resolveAsset(
+  value: string | undefined,
+  cwd: string,
+  key: 'imagePath' | 'soundPath',
+): Partial<PresentationRequest> {
+  return value === undefined ? {} : { [key]: resolve(cwd, value) };
 }

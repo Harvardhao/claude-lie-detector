@@ -16,7 +16,7 @@ async function project(exitCode: number): Promise<string> {
   directories.push(cwd);
   await writeFile(
     join(cwd, '.claude-lie-detector.json'),
-    JSON.stringify({ verify: `${node} -e "process.exit(${exitCode})"` }),
+    JSON.stringify({ verify: `${node} -e "process.exit(${exitCode})"`, popup: false, sound: false }),
     'utf8',
   );
   return cwd;

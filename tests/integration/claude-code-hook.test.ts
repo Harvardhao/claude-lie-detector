@@ -35,7 +35,7 @@ describe('Claude Code hook executable', () => {
     directories.push(cwd);
     await writeFile(
       join(cwd, '.claude-lie-detector.json'),
-      JSON.stringify({ verify: `${JSON.stringify(process.execPath)} -e "process.exit(0)"` }),
+      JSON.stringify({ verify: `${JSON.stringify(process.execPath)} -e "process.exit(0)"`, popup: false, sound: false }),
       'utf8',
     );
 

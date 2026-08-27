@@ -1,4 +1,4 @@
-import { runCli } from '../../cli/index.js';
+import { presentCliResult, runCli } from '../../cli/index.js';
 
 export interface StopHookInput {
   cwd: string;
@@ -44,6 +44,8 @@ export async function runClaudeCodeHook(source: string): Promise<HookOutput> {
       '--cwd',
       input.cwd,
     ]);
+    const presentationError = await presentCliResult(result);
+    if (presentationError) return { systemMessage: `Lie Detector error: ${presentationError}` };
 
     if (result.exitCode === 0) {
       const evaluation = JSON.parse(result.stdout) as { verdict?: string };
