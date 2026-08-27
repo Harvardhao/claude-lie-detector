@@ -1,9 +1,27 @@
 {
   "name": "claude-lie-detector",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "Because this should work now is not a test suite.",
   "type": "module",
   "private": true,
+  "license": "MIT",
+  "author": "Harvard <harvardhaohao@gmail.com>",
+  "homepage": "https://github.com/Harvardhao/claude-lie-detector#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Harvardhao/claude-lie-detector.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Harvardhao/claude-lie-detector/issues"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "claude-code-plugin",
+    "hooks",
+    "verification",
+    "testing"
+  ],
   "bin": {
     "claude-lie-detector": "dist/cli/bin.js"
   },
@@ -21,7 +39,8 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
-    "test": "vitest"
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

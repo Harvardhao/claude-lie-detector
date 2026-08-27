@@ -1,7 +1,7 @@
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { runCli } from '../../src/cli/index.js';
 
@@ -20,8 +20,17 @@ async function project(config: object | string): Promise<string> {
 }
 
 afterEach(async () => {
+  vi.unstubAllEnvs();
   await Promise.all(directories.splice(0).map((directory) => rm(directory, { recursive: true })));
 });
+
+async function bundledAssetsDir(files: string[]): Promise<string> {
+  const directory = await mkdtemp(join(tmpdir(), 'lie-detector-assets-'));
+  directories.push(directory);
+  await Promise.all(files.map((name) => writeFile(join(directory, name), name, 'utf8')));
+  vi.stubEnv('CLAUDE_LIE_DETECTOR_ASSETS_DIR', directory);
+  return directory;
+}
 
 describe('runCli', () => {
   it('uses a claim-specific project verifier', async () => {
@@ -106,6 +115,42 @@ describe('runCli', () => {
     const result = await runCli(['--text', 'The bug is fixed.', '--cwd', join(cwd, 'missing'), '--config', join(cwd, '.claude-lie-detector.json')]);
     expect(result.exitCode).toBe(2);
     expect(JSON.parse(result.stdout).verifications[0].result.error).toBeTypeOf('string');
+  });
+
+  it('falls back to bundled media for a truth verdict', async () => {
+    const assets = await bundledAssetsDir(['truth.png', 'truth.wav']);
+    const cwd = await project({ verify: `${node} -e "process.exit(0)"` });
+    const result = await runCli(['--text', 'The bug is fixed.'], cwd);
+    expect(result.presentation).toMatchObject({
+      imagePath: join(assets, 'truth.png'),
+      soundPath: join(assets, 'truth.wav'),
+    });
+  });
+
+  it('falls back to bundled media for a lie verdict', async () => {
+    const assets = await bundledAssetsDir(['lie.png', 'lie.wav']);
+    const cwd = await project({ verify: `${node} -e "process.exit(1)"` });
+    const result = await runCli(['--text', 'The bug is fixed.'], cwd);
+    expect(result.presentation).toMatchObject({
+      imagePath: join(assets, 'lie.png'),
+      soundPath: join(assets, 'lie.wav'),
+    });
+  });
+
+  it('prefers project config media over the bundled default', async () => {
+    const assets = await bundledAssetsDir(['truth.png', 'truth.wav']);
+    const cwd = await project({ verify: `${node} -e "process.exit(0)"`, truthImage: 'mine.png' });
+    const result = await runCli(['--text', 'The bug is fixed.'], cwd);
+    expect(result.presentation?.imagePath).toBe(join(cwd, 'mine.png'));
+    expect(result.presentation?.soundPath).toBe(join(assets, 'truth.wav'));
+  });
+
+  it('omits media when neither config nor a bundled asset provides it', async () => {
+    await bundledAssetsDir([]);
+    const cwd = await project({ verify: `${node} -e "process.exit(0)"` });
+    const result = await runCli(['--text', 'The bug is fixed.'], cwd);
+    expect(result.presentation).not.toHaveProperty('imagePath');
+    expect(result.presentation).not.toHaveProperty('soundPath');
   });
 
   it('returns exit 2 for missing config', async () => {

@@ -1,8 +1,10 @@
 .worktrees/
 .claude-lie-detector.log
 node_modules/
-dist/
 coverage/
+
+# dist/ is committed for plugin distribution, but source maps are local-only.
+dist/**/*.map
 *.log
 .env
 .env.*

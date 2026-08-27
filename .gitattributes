@@ -1,0 +1,11 @@
+# Normalize line endings so the committed dist/ build output is byte-identical
+# across platforms and the CI "dist is up to date" check stays deterministic.
+* text=auto eol=lf
+
+# Never normalize binary assets.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.wav binary
+*.ico binary
